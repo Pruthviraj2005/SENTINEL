@@ -3,7 +3,8 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-model = SentenceTransformer("all-MiniLM-L3-v2")
+model = SentenceTransformer("all-MiniLM-L3-v2", 
+device="cpu")
 
 
 SKILLS = [
