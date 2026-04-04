@@ -1,8 +1,7 @@
 import re
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-
+# 🔥 Lazy-loaded model (IMPORTANT for Render)
 model = None
 
 def get_model():
@@ -13,12 +12,12 @@ def get_model():
     return model
 
 
+# 🔹 Skill database
 SKILLS = [
     "python","sql","pandas","numpy","machine learning","statistics",
     "power bi","tableau","data analysis","deep learning","nlp",
     "excel","data visualization","scikit-learn"
 ]
-
 
 ROLE_SKILLS = {
     "Data Scientist": ["python","machine learning","statistics","pandas","numpy"],
@@ -28,16 +27,19 @@ ROLE_SKILLS = {
 }
 
 
+# 🔹 Extract skills
 def extract_skills(text):
     text = text.lower()
     return [skill for skill in SKILLS if skill in text]
 
 
+# 🔹 Extract experience
 def extract_experience(text):
     matches = re.findall(r'(\d+)\+?\s*years?', text.lower())
     return max([int(x) for x in matches]) if matches else 0
 
 
+# 🔹 Recommend roles
 def recommend_roles(candidate_skills):
     recommendations = []
 
@@ -54,6 +56,7 @@ def recommend_roles(candidate_skills):
     return sorted(recommendations, key=lambda x: x["match"], reverse=True)
 
 
+# 🔹 Build summary
 def build_summary(similarity, skills, experience):
 
     if experience >= 5:
@@ -79,8 +82,10 @@ def build_summary(similarity, skills, experience):
     }
 
 
+# 🔹 Main ranking function
 def rank_resumes(job_description, resumes):
-    model = get_model()
+    model = get_model()  # ✅ Lazy load here
+
     job_embedding = model.encode([job_description])
     resume_embeddings = model.encode(resumes)
 
@@ -92,7 +97,6 @@ def rank_resumes(job_description, resumes):
 
     for i, resume in enumerate(resumes):
 
-        # ✅ FIXED: convert numpy → python float
         similarity = float(similarity_scores[i])
 
         resume_skills = extract_skills(resume)
@@ -114,12 +118,9 @@ def rank_resumes(job_description, resumes):
 
         results.append({
             "candidate": f"Resume {i+1}",
-
-            # ✅ ALL converted to float (IMPORTANT)
             "score": float(round(final_score * 100, 2)),
             "similarity": float(round(similarity * 100, 2)),
             "skill_match": float(round(skill_score * 100, 2)),
-
             "experience_years": int(years),
             "skills_found": resume_skills,
             "summary": summary,
