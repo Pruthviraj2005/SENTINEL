@@ -68,10 +68,13 @@ formData.append("resumes",file)
 
 try{
 
-const res=await fetch("http://localhost:8000/rank-resumes",{
-method:"POST",
-body:formData
-})
+const res = await fetch(
+  "https://sentinel-backend-wk37.onrender.com/rank-resumes",
+  {
+    method: "POST",
+    body: formData,
+  }
+);
 
 const data=await res.json()
 
