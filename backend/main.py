@@ -47,16 +47,6 @@ async def rank_resume_api(
     resumes: list[UploadFile] = File(...)
 ):
     texts = [read_resume(file) for file in resumes]
-
-    # ⚠️ IMPORTANT: rank_resumes should NOT load model globally
     ranked = rank_resumes(job_description, texts)
 
     return {"ranking": ranked}
-
-
-import os
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
