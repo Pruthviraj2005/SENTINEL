@@ -4,10 +4,9 @@ from ranker import rank_resumes
 import docx
 import pdfplumber
 
-
 app = FastAPI()
 
-
+# ✅ CORS (fine as it is)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,11 +15,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ VERY IMPORTANT (Render health check)
+@app.get("/")
+def health():
+    return {"status": "running"}
 
-def read_resume(file):
+# ✅ Safe file reader (fixed file handling)
+def read_resume(file: UploadFile):
+    content = file.file.read()
 
     if file.filename.endswith(".txt"):
-        return file.file.read().decode("utf-8")
+        return content.decode("utf-8", errors="ignore")
 
     if file.filename.endswith(".docx"):
         doc = docx.Document(file.file)
@@ -35,15 +40,15 @@ def read_resume(file):
 
     return ""
 
-
+# ✅ MAIN API
 @app.post("/rank-resumes")
 async def rank_resume_api(
     job_description: str = Form(...),
     resumes: list[UploadFile] = File(...)
 ):
-
     texts = [read_resume(file) for file in resumes]
 
+    # ⚠️ IMPORTANT: rank_resumes should NOT load model globally
     ranked = rank_resumes(job_description, texts)
 
     return {"ranking": ranked}

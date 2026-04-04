@@ -3,8 +3,14 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-model = SentenceTransformer("all-MiniLM-L3-v2", 
-device="cpu")
+model = None
+
+def get_model():
+    global model
+    if model is None:
+        from sentence_transformers import SentenceTransformer
+        model = SentenceTransformer("all-MiniLM-L3-v2", device="cpu")
+    return model
 
 
 SKILLS = [
@@ -74,7 +80,7 @@ def build_summary(similarity, skills, experience):
 
 
 def rank_resumes(job_description, resumes):
-
+    model = get_model()
     job_embedding = model.encode([job_description])
     resume_embeddings = model.encode(resumes)
 
