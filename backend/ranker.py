@@ -1,7 +1,7 @@
 import re
 from sklearn.metrics.pairwise import cosine_similarity
 
-# 🔥 Lazy-loaded model (IMPORTANT for Render)
+# Lazy-loaded model (critical for performance)
 model = None
 
 def get_model():
@@ -12,7 +12,7 @@ def get_model():
     return model
 
 
-# 🔹 Skill database
+# -------- SKILLS DATABASE --------
 SKILLS = [
     "python","sql","pandas","numpy","machine learning","statistics",
     "power bi","tableau","data analysis","deep learning","nlp",
@@ -27,19 +27,18 @@ ROLE_SKILLS = {
 }
 
 
-# 🔹 Extract skills
+# -------- EXTRACTION --------
 def extract_skills(text):
     text = text.lower()
     return [skill for skill in SKILLS if skill in text]
 
 
-# 🔹 Extract experience
 def extract_experience(text):
     matches = re.findall(r'(\d+)\+?\s*years?', text.lower())
     return max([int(x) for x in matches]) if matches else 0
 
 
-# 🔹 Recommend roles
+# -------- ROLE RECOMMENDATION --------
 def recommend_roles(candidate_skills):
     recommendations = []
 
@@ -56,75 +55,86 @@ def recommend_roles(candidate_skills):
     return sorted(recommendations, key=lambda x: x["match"], reverse=True)
 
 
-# 🔹 Build summary
+# -------- SUMMARY --------
 def build_summary(similarity, skills, experience):
 
     if experience >= 5:
-        exp_text = "Extensive professional experience detected."
+        exp_text = "Strong professional experience detected."
     elif experience >= 2:
-        exp_text = "Moderate relevant work experience detected."
+        exp_text = "Moderate experience detected."
     elif experience > 0:
-        exp_text = "Limited professional experience detected."
+        exp_text = "Basic experience detected."
     else:
         exp_text = "No clear experience detected."
 
-    if similarity > 0.6:
-        reason = "Strong semantic alignment with job description."
-    elif similarity > 0.4:
+    if similarity > 0.65:
+        reason = "Very strong match with job description."
+    elif similarity > 0.45:
         reason = "Moderate alignment with job requirements."
     else:
-        reason = "Low alignment with job description."
+        reason = "Low relevance to job description."
 
     return {
-        "strengths": skills[:4],
+        "top_skills": skills[:4],
         "experience_summary": exp_text,
         "match_reason": reason
     }
 
 
-# 🔹 Main ranking function
+# -------- MAIN FUNCTION --------
 def rank_resumes(job_description, resumes):
-    model = get_model()  # ✅ Lazy load here
 
-    job_embedding = model.encode([job_description])
-    resume_embeddings = model.encode(resumes)
+    try:
+        model = get_model()
 
-    similarity_scores = cosine_similarity(job_embedding, resume_embeddings)[0]
+        # 🔥 OPTIMIZATION: batch encode once
+        embeddings = model.encode([job_description] + resumes)
 
-    job_skills = extract_skills(job_description)
+        job_embedding = embeddings[0]
+        resume_embeddings = embeddings[1:]
 
-    results = []
+        similarity_scores = cosine_similarity(
+            [job_embedding],
+            resume_embeddings
+        )[0]
 
-    for i, resume in enumerate(resumes):
+        job_skills = extract_skills(job_description)
 
-        similarity = float(similarity_scores[i])
+        results = []
 
-        resume_skills = extract_skills(resume)
+        for i, resume in enumerate(resumes):
 
-        skill_overlap = len(set(job_skills) & set(resume_skills))
-        skill_score = skill_overlap / (len(job_skills) + 1)
+            similarity = float(similarity_scores[i])
 
-        years = extract_experience(resume)
-        exp_score = min(years / 5, 1)
+            resume_skills = extract_skills(resume)
 
-        final_score = (
-            0.5 * similarity +
-            0.3 * skill_score +
-            0.2 * exp_score
-        )
+            skill_overlap = len(set(job_skills) & set(resume_skills))
+            skill_score = skill_overlap / (len(job_skills) + 1)
 
-        summary = build_summary(similarity, resume_skills, years)
-        roles = recommend_roles(resume_skills)
+            years = extract_experience(resume)
+            exp_score = min(years / 5, 1)
 
-        results.append({
-            "candidate": f"Resume {i+1}",
-            "score": float(round(final_score * 100, 2)),
-            "similarity": float(round(similarity * 100, 2)),
-            "skill_match": float(round(skill_score * 100, 2)),
-            "experience_years": int(years),
-            "skills_found": resume_skills,
-            "summary": summary,
-            "recommended_roles": roles
-        })
+            final_score = (
+                0.5 * similarity +
+                0.3 * skill_score +
+                0.2 * exp_score
+            )
 
-    return sorted(results, key=lambda x: x["score"], reverse=True)
+            summary = build_summary(similarity, resume_skills, years)
+            roles = recommend_roles(resume_skills)
+
+            results.append({
+                "candidate": f"Resume {i+1}",
+                "score": float(round(final_score * 100, 2)),
+                "similarity": float(round(similarity * 100, 2)),
+                "skill_match": float(round(skill_score * 100, 2)),
+                "experience_years": int(years),
+                "skills_found": resume_skills,
+                "summary": summary,
+                "recommended_roles": roles
+            })
+
+        return sorted(results, key=lambda x: x["score"], reverse=True)
+
+    except Exception as e:
+        return [{"error": str(e)}]
