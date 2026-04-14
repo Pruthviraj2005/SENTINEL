@@ -31,82 +31,99 @@ setFiles(files.filter((_,i)=>i!==index))
 
 async function analyzeResumes(){
 
-if(!jobDescription){
-alert("Paste job description first")
-return
-}
-
-if(files.length===0){
-alert("Upload resumes first")
-return
-}
-
-setLoading(true)
-
-const steps=[
-"Scanning resumes",
-"Extracting candidate skills",
-"Comparing candidates",
-"Generating rankings"
-]
-
-for(let step of steps){
-
-for(let i=0;i<3;i++){
-setProcessing(step + ".".repeat(i+1))
-await new Promise(r=>setTimeout(r,300))
-}
-
-}
-
-const formData=new FormData()
-formData.append("job_description",jobDescription)
-
-files.forEach(file=>{
-formData.append("resumes",file)
-})
-
-try{
-
-const res = await fetch(
-  "https://sentinel-backend-wk37.onrender.com/rank-resumes",
-  {
-    method: "POST",
-    body: formData,
+  if(!jobDescription){
+    alert("Paste job description first")
+    return
   }
-);
 
-const data=await res.json()
+  if(files.length===0){
+    alert("Upload resumes first")
+    return
+  }
 
-const enriched=data.ranking.map(r=>({
+  setLoading(true)
 
-...r,
+  const steps=[
+    "Scanning resumes",
+    "Extracting candidate skills",
+    "Comparing candidates",
+    "Generating rankings"
+  ]
 
-skills:{
-Python:Math.floor(Math.random()*80)+20,
-SQL:Math.floor(Math.random()*80)+20,
-MachineLearning:Math.floor(Math.random()*80)+20,
-Statistics:Math.floor(Math.random()*80)+20
-},
+  for(let step of steps){
+    for(let i=0;i<3;i++){
+      setProcessing(step + ".".repeat(i+1))
+      await new Promise(r=>setTimeout(r,300))
+    }
+  }
 
-insight:[
-"Strong Python and machine learning background",
-"High keyword match with job description",
-"Experience with SQL and data pipelines",
-"Strong statistical analysis knowledge"
-]
+  const formData=new FormData()
+  formData.append("job_description",jobDescription)
 
-}))
+  files.forEach(file=>{
+    formData.append("resumes",file)
+  })
 
-setResults(enriched)
+  try{
 
-}catch(err){
-console.error(err)
-alert("Backend error")
-}
+    const res = await fetch(
+      "https://sentinel-backend-wk37.onrender.com/rank-resumes",
+      {
+        method: "POST",
+        body: formData,
+      }
+    )
 
-setProcessing("")
-setLoading(false)
+    const data = await res.json()
+
+    console.log("FULL RESPONSE:", data) // 🔥 IMPORTANT DEBUG
+
+    // ✅ SAFE HANDLING (THIS FIXES YOUR ERROR)
+    let ranking = []
+
+    if(data.ranking){
+      ranking = data.ranking
+    } 
+    else if(Array.isArray(data)){
+      ranking = data
+    } 
+    else if(data.error){
+      alert("Backend error: " + data.error)
+      setLoading(false)
+      return
+    } 
+    else {
+      alert("Unexpected response from server")
+      setLoading(false)
+      return
+    }
+
+    // 🔥 enrich UI data
+    const enriched = ranking.map(r => ({
+      ...r,
+      skills:{
+        Python:Math.floor(Math.random()*80)+20,
+        SQL:Math.floor(Math.random()*80)+20,
+        MachineLearning:Math.floor(Math.random()*80)+20,
+        Statistics:Math.floor(Math.random()*80)+20
+      },
+      insight:[
+        "Strong Python and machine learning background",
+        "High keyword match with job description",
+        "Experience with SQL and data pipelines",
+        "Strong statistical analysis knowledge"
+      ]
+    }))
+
+    setResults(enriched)
+
+  } catch(err){
+    console.error("FETCH ERROR:", err)
+    alert("Backend not responding (try again in 20 seconds)")
+  }
+
+  setProcessing("")
+  setLoading(false)
 }
 
 
