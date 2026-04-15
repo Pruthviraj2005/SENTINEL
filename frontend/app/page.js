@@ -99,7 +99,11 @@ async function analyzeResumes(){
     }
 
     // 🔥 enrich UI data
-    const enriched = ranking.map(r => ({
+    const enriched = ranking.map((r, index) => ({
+
+      candidate: r.candidate || `Candidate ${index+1}`,
+      score: r.score || 0,
+      
       ...r,
       skills:{
         Python:Math.floor(Math.random()*80)+20,
